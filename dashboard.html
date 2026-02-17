@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Website Inventory Dashboard</title>
+
+    <!-- Google Charts -->
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
+
+    <style>
+      :root{
+        --blue:#0C2C7A; --blue-soft:#2C6DFF; --gold:#E6B652; --gold2:#B98A2F;
+        --ink:#0E0E0E; --muted:#4B4A46;
+        --card-radius:18px;
+      }
+      html,body{
+        margin:0;padding:0;
+        font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+        background:radial-gradient(1200px 780px at 50% 8%, #ffffff 0%, #ffffff 55%, rgba(12,44,122,.08) 75%, rgba(12,44,122,.16) 100%);
+        color:var(--ink);
+      }
+      .wrap{
+        max-width:1240px;
+        margin:0 auto;
+        padding:clamp(16px,4vw,32px);
+      }
+      header{
+        display:flex;
+        flex-direction:column;
+        gap:6px;
+        margin-bottom:18px;
+      }
+      .title{
+        font-family:"Playfair Display",ui-serif,Georgia,serif;
+        font-size:clamp(24px,4vw,34px);
+        color:var(--blue);
+      }
+      .subtitle{
+        color:var(--muted);
+        font-size:14px;
+        max-width:640px;
+      }
+
+      /* Summary cards */
+      .summary-row{
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+        gap:12px;
+        margin-bottom:18px;
+      }
+      .card{
+        border-radius:var(--card-radius);
+        background:#fff;
+        border:1px solid rgba(12,44,122,.10);
+        box-shadow:0 18px 50px rgba(12,44,122,.10);
+        padding:12px 14px;
+      }
+      .card h3{
+        margin:0;
+        font-size:12px;
+        text-transform:uppercase;
+        letter-spacing:.08em;
+        color:#77746c;
+      }
+      .card .value{
+        margin-top:6px;
+        font-size:20px;
+        font-weight:700;
+        color:var(--blue);
+      }
+      .card .meta{
+        margin-top:4px;
+        font-size:12px;
+        color:#9a988f;
+      }
+
+      /* Chart grid */
+      .charts-grid{
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+        gap:16px;
+        margin-bottom:20px;
+      }
+      .chart-card{
+        border-radius:var(--card-radius);
+        background:#fff;
+        border:1px solid rgba(12,44,122,.10);
+        box-shadow:0 18px 50px rgba(12,44,122,.10);
+        padding:10px 10px 4px;
+        display:flex;
+        flex-direction:column;
+      }
+      .chart-title{
+        font-size:13px;
+        font-weight:600;
+        color:var(--blue);
+        margin:0 4px 6px;
+      }
+      .chart{
+        width:100%;
+        height:240px;
+      }
+
+      /* Table + search area */
+      .table-card{
+        border-radius:var(--card-radius);
+        background:#fff;
+        border:1px solid rgba(12,44,122,.10);
+        box-shadow:0 18px 50px rgba(12,44,122,.10);
+        padding:12px 14px;
+        margin-bottom:40px;
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+      }
+      .table-header{
+        display:flex;
+        flex-wrap:wrap;
+        gap:10px;
+        align-items:center;
+        justify-content:space-between;
+      }
+      .table-title{
+        font-size:13px;
+        font-weight:600;
+        color:var(--blue);
+        margin:0;
+      }
+      .table-meta{
+        font-size:11px;
+        color:#9a988f;
+      }
+      .search-input{
+        min-width:220px;
+        padding:8px 12px;
+        border-radius:999px;
+        border:1px solid rgba(12,44,122,.16);
+        background:#fff;
+        font-size:13px;
+        box-shadow:0 10px 26px rgba(12,44,122,.08);
+        outline:none;
+      }
+      .search-input::placeholder{color:#9a9a96;}
+
+      .table-scroll{
+        border-radius:14px;
+        border:1px solid #ECEEF7;
+        overflow:auto;
+        max-height:420px; /* scroll area for products */
+      }
+      table{
+        border-collapse:collapse;
+        width:100%;
+        font-size:12px;
+        background:#fff;
+      }
+      thead{
+        position:sticky;
+        top:0;
+        z-index:1;
+        background:#F5F6FC;
+      }
+      th,td{
+        padding:6px 8px;
+        border-bottom:1px solid #ECEEF7;
+        text-align:left;
+        vertical-align:middle;
+      }
+      th{
+        font-weight:600;
+        color:#66635d;
+        white-space:nowrap;
+      }
+      tbody tr.low{
+        background:rgba(230,182,82,.08);
+      }
+      tbody tr.low td{
+        border-bottom-color:rgba(230,182,82,.35);
+      }
+      .badge-low{
+        display:inline-flex;
+        padding:2px 8px;
+        border-radius:999px;
+        background:rgba(230,182,82,.16);
+        color:#7a5a18;
+        font-size:11px;
+        margin-left:4px;
+      }
+      .pill-status{
+        display:inline-flex;
+        padding:2px 8px;
+        border-radius:999px;
+        font-size:11px;
+      }
+      .pill-status.active{
+        background:rgba(0,128,96,.12);
+        color:#0b6a4b;
+      }
+      .pill-status.inactive{
+        background:rgba(153,153,153,.16);
+        color:#555;
+      }
+      .footer-note{
+        font-size:11px;
+        color:#9a988f;
+      }
+      .pill-count{
+        font-size:11px;
+        background:#F5F6FC;
+        border-radius:999px;
+        padding:2px 8px;
+        margin-left:4px;
+      }
+
+      /* Image + name layout */
+      .cell-main{
+        display:flex;
+        align-items:center;
+        gap:8px;
+      }
+      .thumb-img{
+        width:52px;
+        height:52px;
+        border-radius:10px;
+        object-fit:cover;
+        box-shadow:0 6px 16px rgba(12,44,122,.18);
+        flex-shrink:0;
+      }
+      .img-placeholder{
+        width:52px;
+        height:52px;
+        border-radius:10px;
+        display:grid;
+        place-items:center;
+        background:radial-gradient(circle at 0 0, rgba(230,182,82,.3), rgba(12,44,122,.08));
+        font-size:9px;
+        color:#666;
+        text-align:center;
+        line-height:1.2;
+        flex-shrink:0;
+      }
+      .item-main-text{
+        display:flex;
+        flex-direction:column;
+        gap:2px;
+      }
+      .item-name{
+        font-weight:600;
+        color:var(--blue);
+      }
+      .img-btn{
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        padding:3px 9px;
+        font-size:11px;
+        border-radius:999px;
+        border:1px solid rgba(12,44,122,.18);
+        background:linear-gradient(#fff,#F4F7FF);
+        cursor:pointer;
+        max-width:max-content;
+      }
+      .img-btn:hover{
+        box-shadow:0 6px 16px rgba(12,44,122,.16);
+        transform:translateY(-1px);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="title">Website Inventory Overview</div>
+        <div class="subtitle">
+          Live snapshot of items assigned to the website. Use this to spot low stock,
+          understand stock value, and prep for restocks before customers notice.
+        </div>
+      </header>
+
+      <!-- Summary cards -->
+      <section class="summary-row">
+        <article class="card">
+          <h3>Total Website SKUs</h3>
+          <div class="value" id="totalItems">–</div>
+          <div class="meta">Active items listed for sale.</div>
+        </article>
+        <article class="card">
+          <h3>Total Stock Qty</h3>
+          <div class="value" id="totalStockQty">–</div>
+          <div class="meta">Units currently on hand.</div>
+        </article>
+        <article class="card">
+          <h3>Stock Value (JMD)</h3>
+          <div class="value" id="totalStockValue">–</div>
+          <div class="meta">Based on selling price × qty.</div>
+        </article>
+        <article class="card">
+          <h3>Low Stock Alerts</h3>
+          <div class="value" id="lowStockCount">–</div>
+          <div class="meta">Items at or below reorder level.</div>
+        </article>
+      </section>
+
+      <!-- Charts -->
+      <section class="charts-grid">
+        <article class="chart-card">
+          <h3 class="chart-title">Stock Status Breakdown</h3>
+          <div id="chartStatus" class="chart"></div>
+        </article>
+
+        <article class="chart-card">
+          <h3 class="chart-title">Top 10 Items by Quantity</h3>
+          <div id="chartTopQty" class="chart"></div>
+        </article>
+
+        <article class="chart-card">
+          <h3 class="chart-title">Top 10 Items by Stock Value (JMD)</h3>
+          <div id="chartTopValue" class="chart"></div>
+        </article>
+
+        <article class="chart-card">
+          <h3 class="chart-title">Reorder Risk – On Hand vs Reorder Level</h3>
+          <div id="chartReorder" class="chart"></div>
+        </article>
+      </section>
+
+      <!-- Detail table + search -->
+      <section class="table-card">
+        <div class="table-header">
+          <div>
+            <h3 class="table-title">
+              Inventory Detail
+              <span class="pill-count" id="visibleCount">0 items</span>
+            </h3>
+            <div class="table-meta">
+              Search by name or SKU to quickly find an item. Upload or change product images from the table.
+            </div>
+          </div>
+          <div>
+            <input
+              id="searchBox"
+              class="search-input"
+              placeholder="Search by item name or SKU…"
+            />
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table id="itemsTable">
+            <thead>
+              <tr>
+                <th>Item & Image</th>
+                <th>SKU</th>
+                <th>On Hand</th>
+                <th>Reorder Level</th>
+                <th>Stock On Hand</th>
+                <th>Selling Price</th>
+                <th>Stock Value</th>
+                <th>Status</th>
+                <th>Unit</th>
+                <th>Ref ID</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="footer-note">
+          Low stock rows are highlighted in gold. Data source: <strong>WebsiteItems</strong> sheet.
+        </div>
+      </section>
+    </div>
+
+    <!-- Hidden file input reused for all rows -->
+    <input type="file" id="imagePicker" accept="image/*" style="display:none" />
+
+    <script>
+      // ===== Cloudinary config (front-end only) =====
+      const CLOUDINARY_CLOUD_NAME   = 'dd8pjjxsm';
+      const CLOUDINARY_UPLOAD_PRESET= 'media_upload_preset';
+      const CLOUDINARY_FOLDER       = 'mediaexclusive';
+
+      const PR = new Intl.NumberFormat('en-JM',{ style:'currency', currency:'JMD', maximumFractionDigits:0 });
+      const NF = new Intl.NumberFormat('en-US');
+
+      let ALL_ITEMS = []; // store full data for search
+      let pendingSkuForImage = null;
+
+      google.charts.load('current', { packages:['corechart'] });
+
+      google.charts.setOnLoadCallback(() => {
+        google.script.run
+          .withSuccessHandler(drawDashboard)
+          .getInventoryData();
+      });
+
+      function drawDashboard(data){
+        if(!data || !data.items){ return; }
+
+        ALL_ITEMS  = data.items || [];
+        const items   = ALL_ITEMS;
+        const summary = data.summary || {};
+
+        // ==== Summary cards ====
+        document.getElementById('totalItems').textContent      = NF.format(summary.totalItems || 0);
+        document.getElementById('totalStockQty').textContent   = NF.format(summary.totalStockQty || 0);
+        document.getElementById('totalStockValue').textContent = PR.format(summary.totalStockValue || 0);
+        document.getElementById('lowStockCount').textContent   = NF.format(summary.lowStockCount || 0);
+
+        // ==== Charts ====
+        drawStatusChart(items);
+        drawTopQtyChart(items);
+        drawTopValueChart(items);
+        drawReorderChart(items);
+
+        // ==== Table (initial render with all items) ====
+        renderTable(items);
+
+        // Hook up search (only once)
+        const searchBox = document.getElementById('searchBox');
+        if(!searchBox.dataset.bound){
+          searchBox.addEventListener('input', onSearchChange);
+          searchBox.dataset.bound = '1';
+        }
+      }
+
+      function onSearchChange(e){
+        const term = (e.target.value || '').trim().toLowerCase();
+        if(!term){
+          renderTable(ALL_ITEMS);
+          return;
+        }
+        const filtered = ALL_ITEMS.filter(it => {
+          const name = (it.name || '').toLowerCase();
+          const sku  = (it.sku || '').toLowerCase();
+          return name.includes(term) || sku.includes(term);
+        });
+        renderTable(filtered);
+      }
+
+      /* ===== CHARTS ===== */
+
+      function drawStatusChart(items){
+        let healthy = 0, low = 0, out = 0;
+        items.forEach(it => {
+          const q = Number(it.qtyOnHand || 0);
+          if(q <= 0){
+            out++;
+          }else if(it.isLow){
+            low++;
+          }else{
+            healthy++;
+          }
+        });
+
+        const dataTable = new google.visualization.DataTable();
+        dataTable.addColumn('string','Status');
+        dataTable.addColumn('number','Items');
+        dataTable.addRows([
+          ['Healthy', healthy],
+          ['Low Stock', low],
+          ['Out of Stock', out]
+        ]);
+
+        const options = {
+          legend:{ position:'right' },
+          pieHole:0.45,
+          chartArea:{ left:10, top:10, width:'80%', height:'80%' }
+        };
+
+        const chart = new google.visualization.PieChart(document.getElementById('chartStatus'));
+        chart.draw(dataTable, options);
+      }
+
+      function drawTopQtyChart(items){
+        const rows = items
+          .slice()
+          .sort((a,b) => (b.qtyOnHand || 0) - (a.qtyOnHand || 0))
+          .slice(0,10)
+          .map(it => [truncateLabel(it.name || it.sku || 'Item', 22), Number(it.qtyOnHand || 0)]);
+
+        const dataTable = new google.visualization.DataTable();
+        dataTable.addColumn('string','Item');
+        dataTable.addColumn('number','Qty');
+        dataTable.addRows(rows);
+
+        const options = {
+          legend:{ position:'none' },
+          chartArea:{ left:40, top:20, width:'80%', height:'70%' },
+          hAxis:{ minValue:0 }
+        };
+
+        const chart = new google.visualization.ColumnChart(document.getElementById('chartTopQty'));
+        chart.draw(dataTable, options);
+      }
+
+      function drawTopValueChart(items){
+        const rows = items
+          .map(it => {
+            const qty   = Number(it.qtyOnHand || 0);
+            const price = Number(it.sellingPrice || 0);
+            return {
+              label: truncateLabel(it.name || it.sku || 'Item', 22),
+              value: qty * price
+            };
+          })
+          .sort((a,b) => b.value - a.value)
+          .slice(0,10)
+          .map(r => [r.label, r.value]);
+
+        const dataTable = new google.visualization.DataTable();
+        dataTable.addColumn('string','Item');
+        dataTable.addColumn('number','Value');
+        dataTable.addRows(rows);
+
+        const options = {
+          legend:{ position:'none' },
+          chartArea:{ left:40, top:20, width:'80%', height:'70%' },
+          hAxis:{ minValue:0 },
+          vAxis:{ format:'short' }
+        };
+
+        const chart = new google.visualization.ColumnChart(document.getElementById('chartTopValue'));
+        chart.draw(dataTable, options);
+      }
+
+      function drawReorderChart(items){
+        const candidates = items
+          .filter(it => Number(it.reorderLevel || 0) > 0)
+          .map(it => {
+            const qty  = Number(it.qtyOnHand || 0);
+            const re   = Number(it.reorderLevel || 0);
+            const ratio = re === 0 ? 999 : qty / re;
+            return {
+              label: truncateLabel(it.name || it.sku || 'Item', 22),
+              qty,
+              re,
+              ratio
+            };
+          })
+          .sort((a,b) => a.ratio - b.ratio) // lowest coverage first
+          .slice(0,10);
+
+        const dataTable = new google.visualization.DataTable();
+        dataTable.addColumn('string','Item');
+        dataTable.addColumn('number','On Hand');
+        dataTable.addColumn('number','Reorder Level');
+        candidates.forEach(c => dataTable.addRow([c.label, c.qty, c.re]));
+
+        const options = {
+          legend:{ position:'top' },
+          chartArea:{ left:80, top:30, width:'70%', height:'65%' },
+          hAxis:{ textPosition:'none' },
+          isStacked:false
+        };
+
+        const chart = new google.visualization.BarChart(document.getElementById('chartReorder'));
+        chart.draw(dataTable, options);
+      }
+
+      /* ===== TABLE RENDER ===== */
+
+      function renderTable(items){
+        const tbody = document.querySelector('#itemsTable tbody');
+        const countEl = document.getElementById('visibleCount');
+        tbody.innerHTML = '';
+
+        items.forEach(it => {
+          const tr = document.createElement('tr');
+          if(it.isLow){ tr.classList.add('low'); }
+
+          const stockValue = Number(it.qtyOnHand || 0) * Number(it.sellingPrice || 0);
+
+          // IMPORTANT: Code.gs sends the FULL URL here (Cloudinary secure_url)
+          const imgSrc = it.imageUrl || it.image || '';
+
+          tr.innerHTML = `
+            <td>
+              <div class="cell-main">
+                ${
+                  imgSrc
+                    ? `<img src="${imgSrc}" alt="" class="thumb-img">`
+                    : `<div class="img-placeholder">No<br>image</div>`
+                }
+                <div class="item-main-text">
+                  <span class="item-name">
+                    ${escapeHtml(it.name || '')}
+                    ${it.isLow ? '<span class="badge-low">Low stock</span>' : ''}
+                  </span>
+                  <button
+                    type="button"
+                    class="img-btn"
+                    data-sku="${escapeHtml(it.sku || '')}">
+                    ${imgSrc ? 'Change image' : 'Upload image'}
+                  </button>
+                </div>
+              </div>
+            </td>
+            <td>${escapeHtml(it.sku || '')}</td>
+            <td>${NF.format(it.qtyOnHand || 0)}</td>
+            <td>${NF.format(it.reorderLevel || 0)}</td>
+            <td>${NF.format(it.stockOnHand || 0)}</td>
+            <td>${PR.format(it.sellingPrice || 0)}</td>
+            <td>${PR.format(stockValue)}</td>
+            <td>${statusPill(it.status)}</td>
+            <td>${escapeHtml(it.unit || '')}</td>
+            <td>${escapeHtml(it.referenceId || '')}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // Bind upload/change buttons
+        tbody.querySelectorAll('.img-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const sku = btn.getAttribute('data-sku');
+            if(!sku) return;
+            pendingSkuForImage = sku;
+            const picker = document.getElementById('imagePicker');
+            picker.value = '';
+            picker.click();
+          });
+        });
+
+        const label = items.length === 1 ? 'item' : 'items';
+        countEl.textContent = `${items.length} ${label}`;
+      }
+
+      /* ===== CLOUDINARY UPLOAD + SAVE TO SHEET ===== */
+
+      async function uploadToCloudinary(file){
+        const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+        const fd  = new FormData();
+        fd.append('file', file);
+        fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+        fd.append('folder', CLOUDINARY_FOLDER);
+
+        const res = await fetch(url, {
+          method:'POST',
+          body: fd
+        });
+
+        if(!res.ok){
+          throw new Error('Cloudinary upload failed (' + res.status + ')');
+        }
+
+        const json = await res.json();
+        return json.secure_url || json.url;
+      }
+
+      const imgPicker = document.getElementById('imagePicker');
+      imgPicker.addEventListener('change', async () => {
+        const file = imgPicker.files && imgPicker.files[0];
+        if(!file || !pendingSkuForImage) return;
+
+        try{
+          const secureUrl = await uploadToCloudinary(file);
+
+          // Save URL into sheet via Apps Script
+          google.script.run
+            .withSuccessHandler(() => {
+              // Reload dashboard data to show image
+              google.script.run
+                .withSuccessHandler(drawDashboard)
+                .getInventoryData();
+            })
+            .withFailureHandler(err => {
+              alert('Saving image URL to sheet failed: ' + (err && err.message ? err.message : err));
+            })
+            .uploadItemImage(pendingSkuForImage, secureUrl);
+
+        }catch(err){
+          alert('Image upload failed: ' + err.message);
+        }finally{
+          pendingSkuForImage = null;
+          imgPicker.value = '';
+        }
+      });
+
+      /* ===== HELPERS ===== */
+
+      function truncateLabel(str, max){
+        str = str || '';
+        return str.length > max ? str.slice(0,max-1) + '…' : str;
+      }
+
+      function statusPill(status){
+        const s = (status || '').toString().toLowerCase();
+        if(!s) return '';
+        if(s === 'active'){
+          return `<span class="pill-status active">Active</span>`;
+        }
+        return `<span class="pill-status inactive">${escapeHtml(status)}</span>`;
+      }
+
+      function escapeHtml(str){
+        return String(str || '')
+          .replace(/&/g,'&amp;')
+          .replace(/</g,'&lt;')
+          .replace(/>/g,'&gt;')
+          .replace(/"/g,'&quot;')
+          .replace(/'/g,'&#39;');
+      }
+
+      // Optional: redraw charts on resize
+      window.addEventListener('resize', () => {
+        google.script.run
+          .withSuccessHandler(drawDashboard)
+          .getInventoryData();
+      });
+    </script>
+  </body>
+</html>
