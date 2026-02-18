@@ -23,6 +23,27 @@ const UI_STATE = {
 
 const CELL_STATE = new Map();
 
+const DEFAULT_COLUMNS = [
+  { key: 'item', label: 'Item & Image' },
+  { key: 'sku', label: 'SKU' },
+  { key: 'qtyOnHand', label: 'On Hand' },
+  { key: 'reorderLevel', label: 'Reorder' },
+  { key: 'stockOnHand', label: 'Stock' },
+  { key: 'price', label: 'Price' },
+  { key: 'stockValue', label: 'Stock value' },
+  { key: 'status', label: 'Status' },
+  { key: 'unit', label: 'Unit' },
+  { key: 'referenceId', label: 'Ref ID' },
+  { key: 'category', label: 'Category' },
+  { key: 'parentId', label: 'Parent ID' },
+  { key: 'featured', label: 'Featured' },
+  { key: 'visible', label: 'Visible' },
+  { key: 'sortOrder', label: 'Sort' },
+  { key: 'meta', label: 'Options/Promo' }
+];
+
+let COLUMN_ORDER = loadColumnOrder();
+
 google.charts.load('current', { packages: ['corechart'] });
 google.charts.setOnLoadCallback(loadProducts);
 
@@ -102,7 +123,13 @@ function bindControls() {
     ['createBundleBtn', 'click', () => openBundleModal()],
     ['closeBundleModal', 'click', closeBundleModal],
     ['saveBundleModal', 'click', saveBundleModal],
-    ['deleteBundleBtn', 'click', deleteCurrentBundle]
+    ['deleteBundleBtn', 'click', deleteCurrentBundle],
+    ['columnSettingsBtn', 'click', openColumnModal],
+    ['closeColumnModal', 'click', closeColumnModal],
+    ['resetColumnsBtn', 'click', resetColumns],
+    ['addProductBtn', 'click', openAddProductModal],
+    ['closeAddProductModal', 'click', closeAddProductModal],
+    ['saveAddProductModal', 'click', saveAddProductModal]
   ];
 
   controls.forEach(([id, event, handler]) => {
@@ -211,6 +238,7 @@ function renderTable() {
   const countEl = document.getElementById('visibleCount');
   const items = getDisplayedItems();
   tbody.innerHTML = '';
+  renderTableHeader();
 
   items.forEach((it) => {
     const tr = document.createElement('tr');
@@ -221,35 +249,8 @@ function renderTable() {
     const parentId = String(it.parentId || '').trim();
     const typeBadge = parentId ? '<span class="type-badge variant">Variant</span>' : '<span class="type-badge main">Main</span>';
 
-    tr.innerHTML = `
-      <td>
-        <div class="cell-main">
-          ${imgSrc ? `<img src="${imgSrc}" alt="" class="thumb-img">` : '<div class="img-placeholder">No<br>image</div>'}
-          <div class="item-main-text">
-            <span class="item-name">${escapeHtml(it.name || '')}${it.isLow ? '<span class="badge-low">Low stock</span>' : ''}</span>
-            <div class="item-meta-inline">
-              ${typeBadge}
-              <button type="button" class="img-btn" data-sku="${escapeHtml(it.sku || '')}">${imgSrc ? 'Change image' : 'Upload image'}</button>
-            </div>
-          </div>
-        </div>
-      </td>
-      <td>${escapeHtml(it.sku || '')}</td>
-      <td>${NF.format(it.qtyOnHand || 0)}</td>
-      <td>${NF.format(it.reorderLevel || 0)}</td>
-      <td>${NF.format(it.stockOnHand || 0)}</td>
-      <td>${PR.format(it.sellingPrice || 0)}</td>
-      <td>${PR.format(stockValue)}</td>
-      <td>${statusPill(it.status)}</td>
-      <td>${escapeHtml(it.unit || '')}</td>
-      <td>${escapeHtml(it.referenceId || '')}</td>
-      <td>${editableTextCellHtml(it, 'category', 'Category')}</td>
-      <td>${editableTextCellHtml(it, 'parentId', 'Parent ID')}</td>
-      <td>${toggleCellHtml(it, 'featured')}</td>
-      <td>${toggleCellHtml(it, 'visible')}</td>
-      <td>${editableTextCellHtml(it, 'sortOrder', 'Sort')}</td>
-      <td><button type="button" class="meta-btn" data-meta-sku="${escapeHtml(it.sku || '')}">Edit options & promo</button></td>
-    `;
+    const cellMap = buildCellMap(it, stockValue, imgSrc, typeBadge);
+    tr.innerHTML = COLUMN_ORDER.map((key) => `<td>${cellMap[key] || ''}</td>`).join('');
 
     tbody.appendChild(tr);
   });
@@ -267,6 +268,132 @@ function renderTable() {
 
   countEl.textContent = `${items.length} ${items.length === 1 ? 'item' : 'items'}`;
   refreshGlobalSaveStatus();
+}
+
+
+function loadColumnOrder() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('inventory:columnOrder') || '[]');
+    const valid = saved.filter((key) => DEFAULT_COLUMNS.some((c) => c.key === key));
+    return valid.length ? valid : DEFAULT_COLUMNS.map((c) => c.key);
+  } catch (_err) {
+    return DEFAULT_COLUMNS.map((c) => c.key);
+  }
+}
+
+function persistColumnOrder() {
+  localStorage.setItem('inventory:columnOrder', JSON.stringify(COLUMN_ORDER));
+}
+
+function renderTableHeader() {
+  const row = document.getElementById('itemsTableHeaderRow');
+  row.innerHTML = COLUMN_ORDER.map((key) => {
+    const col = DEFAULT_COLUMNS.find((c) => c.key === key);
+    return `<th>${col ? col.label : key}</th>`;
+  }).join('');
+}
+
+function buildCellMap(it, stockValue, imgSrc, typeBadge) {
+  return {
+    item: `<div class="cell-main">${imgSrc ? `<img src="${imgSrc}" alt="" class="thumb-img">` : '<div class="img-placeholder">No<br>image</div>'}<div class="item-main-text"><span class="item-name">${escapeHtml(it.name || '')}${it.isLow ? '<span class="badge-low">Low stock</span>' : ''}</span><div class="item-meta-inline">${typeBadge}<button type="button" class="img-btn" data-sku="${escapeHtml(it.sku || '')}">${imgSrc ? 'Change image' : 'Upload image'}</button></div></div></div>`,
+    sku: escapeHtml(it.sku || ''),
+    qtyOnHand: NF.format(it.qtyOnHand || 0),
+    reorderLevel: NF.format(it.reorderLevel || 0),
+    stockOnHand: NF.format(it.stockOnHand || 0),
+    price: PR.format(it.sellingPrice || 0),
+    stockValue: PR.format(stockValue),
+    status: statusPill(it.status),
+    unit: escapeHtml(it.unit || ''),
+    referenceId: escapeHtml(it.referenceId || ''),
+    category: editableTextCellHtml(it, 'category', 'Category'),
+    parentId: editableTextCellHtml(it, 'parentId', 'Parent ID'),
+    featured: toggleCellHtml(it, 'featured'),
+    visible: toggleCellHtml(it, 'visible'),
+    sortOrder: editableTextCellHtml(it, 'sortOrder', 'Sort'),
+    meta: `<button type="button" class="meta-btn" data-meta-sku="${escapeHtml(it.sku || '')}">Edit options & promo</button>`
+  };
+}
+
+function openColumnModal() {
+  const list = document.getElementById('columnsList');
+  const render = () => {
+    list.innerHTML = '';
+    COLUMN_ORDER.forEach((key, idx) => {
+      const col = DEFAULT_COLUMNS.find((c) => c.key === key);
+      const item = document.createElement('div');
+      item.className = 'columns-item';
+      item.innerHTML = `<span>${col ? col.label : key}</span><div class="columns-item-controls"><button class="mini-btn" data-col-up="${key}" ${idx===0?'disabled':''}>Up</button><button class="mini-btn" data-col-down="${key}" ${idx===COLUMN_ORDER.length-1?'disabled':''}>Down</button></div>`;
+      list.appendChild(item);
+    });
+  };
+  render();
+  list.onclick = (e) => {
+    const up = e.target.closest('[data-col-up]');
+    const down = e.target.closest('[data-col-down]');
+    if (up) {
+      const key = up.getAttribute('data-col-up');
+      const i = COLUMN_ORDER.indexOf(key);
+      if (i > 0) [COLUMN_ORDER[i - 1], COLUMN_ORDER[i]] = [COLUMN_ORDER[i], COLUMN_ORDER[i - 1]];
+      persistColumnOrder();
+      render();
+      renderTable();
+    }
+    if (down) {
+      const key = down.getAttribute('data-col-down');
+      const i = COLUMN_ORDER.indexOf(key);
+      if (i >= 0 && i < COLUMN_ORDER.length - 1) [COLUMN_ORDER[i + 1], COLUMN_ORDER[i]] = [COLUMN_ORDER[i], COLUMN_ORDER[i + 1]];
+      persistColumnOrder();
+      render();
+      renderTable();
+    }
+  };
+  document.getElementById('columnModal').classList.add('open');
+}
+
+function closeColumnModal() {
+  document.getElementById('columnModal').classList.remove('open');
+}
+
+function resetColumns() {
+  COLUMN_ORDER = DEFAULT_COLUMNS.map((c) => c.key);
+  persistColumnOrder();
+  openColumnModal();
+  renderTable();
+}
+
+function openAddProductModal() {
+  document.getElementById('addProductModal').classList.add('open');
+}
+
+function closeAddProductModal() {
+  document.getElementById('addProductModal').classList.remove('open');
+}
+
+async function saveAddProductModal() {
+  const payload = {
+    name: document.getElementById('newName').value.trim(),
+    sku: document.getElementById('newSku').value.trim(),
+    sellingPrice: document.getElementById('newPrice').value.trim(),
+    qtyOnHand: document.getElementById('newQty').value.trim(),
+    reorderLevel: document.getElementById('newReorder').value.trim(),
+    stockOnHand: document.getElementById('newStock').value.trim(),
+    purchasePrice: document.getElementById('newPurchasePrice').value.trim(),
+    unit: document.getElementById('newUnit').value.trim(),
+    referenceId: document.getElementById('newReferenceId').value.trim(),
+    imageUrl: document.getElementById('newImageUrl').value.trim(),
+    category: document.getElementById('newCategory').value.trim(),
+    parentId: document.getElementById('newParentId').value.trim(),
+    featured: document.getElementById('newFeatured').checked,
+    visible: document.getElementById('newVisible').checked
+  };
+
+  try {
+    await apiFetch('/api/items', { method: 'POST', body: JSON.stringify(payload) });
+    closeAddProductModal();
+    await loadProducts();
+  } catch (err) {
+    alert(`Failed to create product: ${err.message}`);
+  }
 }
 
 function editableTextCellHtml(item, field, placeholder) {

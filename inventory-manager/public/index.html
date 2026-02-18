@@ -29,6 +29,7 @@
       .search-input,.toolbar-select,.clear-btn,.primary-btn,.secondary-btn,.cell-input{min-height:40px;padding:8px 12px;border-radius:10px;border:1px solid rgba(12,44,122,.2);background:#fff;font-size:13px;outline:none;}
       .clear-btn,.primary-btn,.secondary-btn{border-radius:999px;cursor:pointer;font-weight:600;} .primary-btn{background:var(--blue);color:#fff;border-color:var(--blue);} .secondary-btn{background:#fff;color:var(--blue);}
       .manage-toolbar{position:sticky;top:8px;z-index:4;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px;border-radius:12px;background:#F8FAFF;border:1px solid #E6EAF6;}
+      .toolbar-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto;}
       .toggle-wrap{display:inline-flex;gap:8px;align-items:center;font-size:13px;font-weight:500;color:#43413d;min-height:40px;padding:0 6px;} .toggle-wrap input{width:18px;height:18px;accent-color:var(--blue-soft);}
       .save-pill{display:inline-flex;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600;} .save-pill.saved{background:rgba(0,128,96,.12);color:#0b6a4b;} .save-pill.saving{background:rgba(230,182,82,.2);color:#7a5a18;} .save-pill.error{background:rgba(203,63,63,.16);color:#9d1d1d;}
       .table-scroll{border-radius:14px;border:1px solid #E2E8F5;overflow:auto;max-height:460px;background:#fff;}
@@ -53,6 +54,10 @@
       .modal{position:fixed;inset:0;background:rgba(8,14,38,.45);display:none;align-items:center;justify-content:center;z-index:30;padding:16px;} .modal.open{display:flex;}
       .modal-card{width:min(720px,100%);background:#fff;border-radius:18px;padding:16px;border:1px solid rgba(12,44,122,.16);box-shadow:0 24px 60px rgba(11,29,77,.26);} .modal-title{margin:0 0 12px;color:var(--blue);font-size:18px;}
       .modal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;} .modal-grid .full{grid-column:1/-1;} textarea.cell-input{min-height:90px;border-radius:12px;resize:vertical;}
+      .columns-list{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow:auto;border:1px solid #e2e8f5;border-radius:10px;padding:10px;background:#fbfcff;}
+      .columns-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border:1px solid #dce5fa;border-radius:10px;background:#fff;}
+      .columns-item-controls{display:flex;gap:6px;}
+      .mini-btn{min-height:32px;padding:4px 10px;border-radius:999px;border:1px solid #d2dcf5;background:#fff;color:#1f3d88;font-size:12px;font-weight:600;cursor:pointer;}
       .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;flex-wrap:wrap;}
       .bundle-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;} .empty-state{font-size:13px;color:#6f6d67;padding:14px;border:1px dashed #c9d5f2;border-radius:12px;}
       button:focus-visible,.search-input:focus-visible,.toolbar-select:focus-visible,.cell-input:focus-visible,.toggle-wrap input:focus-visible{box-shadow:var(--focus-ring);outline:none;}
@@ -101,6 +106,10 @@
             <label class="toggle-wrap"><input id="featuredOnlyToggle" type="checkbox" /><span>Featured only</span></label>
             <label class="toggle-wrap"><input id="visibleOnlyToggle" type="checkbox" /><span>Visible only</span></label>
             <label class="toggle-wrap"><input id="saleNowToggle" type="checkbox" /><span>On sale now</span></label>
+            <div class="toolbar-actions">
+              <button id="columnSettingsBtn" class="secondary-btn" type="button">Columns</button>
+              <button id="addProductBtn" class="primary-btn" type="button">Add product</button>
+            </div>
             <span id="saveStatus" class="save-pill saved">Saved</span>
             <button id="clearFiltersBtn" class="clear-btn" type="button">Clear filters</button>
           </div>
@@ -108,10 +117,7 @@
           <div class="table-scroll">
             <table id="itemsTable">
               <thead>
-                <tr>
-                  <th>Item & Image</th><th>SKU</th><th>On Hand</th><th>Reorder</th><th>Stock</th><th>Price</th><th>Stock value</th><th>Status</th><th>Unit</th><th>Ref ID</th>
-                  <th>Category</th><th>Parent ID</th><th>Featured</th><th>Visible</th><th>Sort</th><th>Options/Promo</th>
-                </tr>
+                <tr id="itemsTableHeaderRow"></tr>
               </thead>
               <tbody></tbody>
             </table>
@@ -173,6 +179,38 @@
           <label class="toggle-wrap"><input id="bundleActive" type="checkbox" checked /><span>Active</span></label>
         </div>
         <div class="modal-actions"><button id="deleteBundleBtn" type="button" class="secondary-btn" style="margin-right:auto;display:none;">Delete</button><button id="closeBundleModal" type="button" class="secondary-btn">Cancel</button><button id="saveBundleModal" type="button" class="primary-btn">Save bundle</button></div>
+      </div>
+    </div>
+
+    <div id="columnModal" class="modal" role="dialog" aria-modal="true">
+      <div class="modal-card" style="width:min(560px,100%);">
+        <h3 class="modal-title">Customize Columns</h3>
+        <div class="table-meta">Move columns up/down to control order in the products table.</div>
+        <div id="columnsList" class="columns-list" style="margin-top:10px;"></div>
+        <div class="modal-actions"><button id="resetColumnsBtn" type="button" class="secondary-btn">Reset</button><button id="closeColumnModal" type="button" class="secondary-btn">Done</button></div>
+      </div>
+    </div>
+
+    <div id="addProductModal" class="modal" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <h3 class="modal-title">Add New Product</h3>
+        <div class="modal-grid">
+          <div><label>Name</label><input id="newName" class="cell-input" /></div>
+          <div><label>SKU</label><input id="newSku" class="cell-input" /></div>
+          <div><label>Price</label><input id="newPrice" type="number" class="cell-input" /></div>
+          <div><label>Qty On Hand</label><input id="newQty" type="number" class="cell-input" /></div>
+          <div><label>Reorder Level</label><input id="newReorder" type="number" class="cell-input" /></div>
+          <div><label>Stock On Hand</label><input id="newStock" type="number" class="cell-input" /></div>
+          <div><label>Purchase Price</label><input id="newPurchasePrice" type="number" class="cell-input" /></div>
+          <div><label>Unit</label><input id="newUnit" class="cell-input" /></div>
+          <div><label>Reference ID</label><input id="newReferenceId" class="cell-input" /></div>
+          <div><label>Image URL</label><input id="newImageUrl" class="cell-input" /></div>
+          <div><label>Category</label><input id="newCategory" class="cell-input" /></div>
+          <div><label>Parent ID</label><input id="newParentId" class="cell-input" /></div>
+          <label class="toggle-wrap"><input id="newFeatured" type="checkbox" /><span>Featured</span></label>
+          <label class="toggle-wrap"><input id="newVisible" type="checkbox" checked /><span>Visible</span></label>
+        </div>
+        <div class="modal-actions"><button id="closeAddProductModal" type="button" class="secondary-btn">Cancel</button><button id="saveAddProductModal" type="button" class="primary-btn">Create Product</button></div>
       </div>
     </div>
 

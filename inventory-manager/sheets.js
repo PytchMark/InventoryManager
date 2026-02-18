@@ -276,6 +276,49 @@ async function updateItemMetaBySku(payload = {}) {
   return { success: true, sku: targetSku, row: rowNumber };
 }
 
+async function createProduct(product = {}) {
+  const sku = String(product.sku || '').trim();
+  const name = String(product.name || '').trim();
+  if (!sku) throw new Error('Missing SKU');
+  if (!name) throw new Error('Missing product name');
+
+  const sheets = await getSheetsClient();
+  const { spreadsheetId, sheetName } = getConfig();
+
+  const row = [
+    name,
+    product.qtyOnHand === '' || product.qtyOnHand === undefined ? '' : Number(product.qtyOnHand),
+    product.reorderLevel === '' || product.reorderLevel === undefined ? '' : Number(product.reorderLevel),
+    product.stockOnHand === '' || product.stockOnHand === undefined ? '' : Number(product.stockOnHand),
+    product.sellingPrice === '' || product.sellingPrice === undefined ? '' : Number(product.sellingPrice),
+    sku,
+    String(product.referenceId || '').trim(),
+    product.purchasePrice === '' || product.purchasePrice === undefined ? '' : Number(product.purchasePrice),
+    'Active',
+    String(product.unit || '').trim(),
+    String(product.imageUrl || '').trim(),
+    String(product.category || '').trim(),
+    String(product.parentId || '').trim(),
+    String(product.variantOptions || '').trim(),
+    product.promoPrice === '' || product.promoPrice === undefined ? '' : Number(product.promoPrice),
+    String(product.promoStart || '').trim(),
+    String(product.promoEnd || '').trim(),
+    toBool(product.featured, false),
+    toBool(product.visible, true),
+    product.sortOrder === '' || product.sortOrder === undefined ? '' : Number(product.sortOrder)
+  ];
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `${sheetName}!A:T`,
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [row] }
+  });
+
+  return { success: true, sku };
+}
+
 async function getVariantsByParentSku(parentSku) {
   const data = await getInventoryData();
   const target = String(parentSku || '').trim();
@@ -507,5 +550,6 @@ module.exports = {
   updateBundle,
   updateClassificationBySku,
   updateImageUrlBySku,
-  updateItemMetaBySku
+  updateItemMetaBySku,
+  createProduct
 };

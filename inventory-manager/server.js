@@ -11,7 +11,8 @@ const {
   updateBundle,
   updateClassificationBySku,
   updateImageUrlBySku,
-  updateItemMetaBySku
+  updateItemMetaBySku,
+  createProduct
 } = require('./sheets');
 
 const app = express();
@@ -102,6 +103,18 @@ app.post('/api/items/meta', async (req, res) => {
     console.error('POST /api/items/meta failed:', error);
     const statusCode = /Missing|not found/i.test(error.message || '') ? 400 : 500;
     res.status(statusCode).json({ error: error.message || 'Failed to update item metadata' });
+  }
+});
+
+
+app.post('/api/items', async (req, res) => {
+  try {
+    const result = await createProduct(req.body || {});
+    res.json(result);
+  } catch (error) {
+    console.error('POST /api/items failed:', error);
+    const statusCode = /Missing|not found/i.test(error.message || '') ? 400 : 500;
+    res.status(statusCode).json({ error: error.message || 'Failed to create item' });
   }
 });
 
