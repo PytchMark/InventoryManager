@@ -195,7 +195,7 @@ function renderTable() {
             </span>
             <div class="item-meta-inline">
               ${typeBadge}
-              <button type="button" class="img-btn" data-sku="${escapeHtml(it.sku || '')}">
+              <button type="button" class="img-btn" data-sku="${escapeHtml(it.sku || '')}" aria-label="${imgSrc ? 'Change image for' : 'Upload image for'} ${escapeHtml(it.name || it.sku || 'item')}">
                 ${imgSrc ? 'Change image' : 'Upload image'}
               </button>
             </div>
@@ -242,12 +242,13 @@ function editableCellHtml(item, field) {
   const value = escapeHtml(rawValue);
   const classes = ['editable-cell'];
   if (state.status === 'saving') classes.push('saving');
-  if (state.status === 'error') classes.push('error');
+  else if (state.status === 'error') classes.push('error');
+  else if (state.status === 'saved') classes.push('saved');
 
   return `
     <div class="${classes.join(' ')}" data-sku="${escapeHtml(sku)}" data-field="${field}">
       <button type="button" class="editable-display">${value || '<span class="muted">Click to edit</span>'}</button>
-      <span class="cell-state">${state.status === 'saving' ? 'Saving…' : state.status === 'error' ? 'Error' : ''}</span>
+      <span class="cell-state">${state.status === 'saving' ? 'Saving…' : state.status === 'error' ? 'Error' : state.status === 'saved' ? 'Saved' : ''}</span>
       ${state.status === 'error' ? '<button type="button" class="retry-btn">Retry</button>' : ''}
     </div>
   `;
