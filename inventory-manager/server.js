@@ -2,9 +2,17 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const {
+  createBundle,
+  deleteBundle,
+  getConfig,
   getInventoryData,
+  getVariantsByParentSku,
+  listBundles,
+  updateBundle,
+  updateClassificationBySku,
   updateImageUrlBySku,
-  updateClassificationBySku
+  updateItemMetaBySku,
+  createProduct
 } = require('./sheets');
 
 const app = express();
@@ -63,6 +71,16 @@ app.get('/api/inventory', async (_req, res) => {
   }
 });
 
+app.get('/api/variants', async (req, res) => {
+  try {
+    const variants = await getVariantsByParentSku(req.query.parentSku);
+    res.json({ variants });
+  } catch (error) {
+    console.error('GET /api/variants failed:', error);
+    const statusCode = /Missing|not found/i.test(error.message || '') ? 400 : 500;
+    res.status(statusCode).json({ error: error.message || 'Failed to load variants' });
+  }
+});
 
 app.post('/api/items/classify', async (req, res) => {
   const { sku, category, parentId } = req.body || {};
@@ -77,6 +95,29 @@ app.post('/api/items/classify', async (req, res) => {
   }
 });
 
+app.post('/api/items/meta', async (req, res) => {
+  try {
+    await updateItemMetaBySku(req.body || {});
+    res.json({ success: true });
+  } catch (error) {
+    console.error('POST /api/items/meta failed:', error);
+    const statusCode = /Missing|not found/i.test(error.message || '') ? 400 : 500;
+    res.status(statusCode).json({ error: error.message || 'Failed to update item metadata' });
+  }
+});
+
+
+app.post('/api/items', async (req, res) => {
+  try {
+    const result = await createProduct(req.body || {});
+    res.json(result);
+  } catch (error) {
+    console.error('POST /api/items failed:', error);
+    const statusCode = /Missing|not found/i.test(error.message || '') ? 400 : 500;
+    res.status(statusCode).json({ error: error.message || 'Failed to create item' });
+  }
+});
+
 app.post('/api/items/image', async (req, res) => {
   const { sku, imageUrl } = req.body || {};
 
@@ -87,6 +128,50 @@ app.post('/api/items/image', async (req, res) => {
     console.error('POST /api/items/image failed:', error);
     const statusCode = /Missing|not found/i.test(error.message || '') ? 400 : 500;
     res.status(statusCode).json({ error: error.message || 'Failed to update image URL' });
+  }
+});
+
+app.get('/api/bundles', async (_req, res) => {
+  try {
+    const bundles = await listBundles();
+    res.json({ bundles });
+  } catch (error) {
+    console.error('GET /api/bundles failed:', error);
+    res.status(500).json({ error: error.message || 'Failed to load bundles' });
+  }
+});
+
+app.post('/api/bundles', async (req, res) => {
+  try {
+    getConfig();
+    const bundle = await createBundle(req.body || {});
+    res.json({ success: true, bundle });
+  } catch (error) {
+    console.error('POST /api/bundles failed:', error);
+    const statusCode = /Missing|not found/i.test(error.message || '') ? 400 : 500;
+    res.status(statusCode).json({ error: error.message || 'Failed to create bundle' });
+  }
+});
+
+app.put('/api/bundles/:id', async (req, res) => {
+  try {
+    const bundle = await updateBundle(req.params.id, req.body || {});
+    res.json({ success: true, bundle });
+  } catch (error) {
+    console.error('PUT /api/bundles/:id failed:', error);
+    const statusCode = /Missing|not found/i.test(error.message || '') ? 400 : 500;
+    res.status(statusCode).json({ error: error.message || 'Failed to update bundle' });
+  }
+});
+
+app.delete('/api/bundles/:id', async (req, res) => {
+  try {
+    const result = await deleteBundle(req.params.id);
+    res.json(result);
+  } catch (error) {
+    console.error('DELETE /api/bundles/:id failed:', error);
+    const statusCode = /Missing|not found/i.test(error.message || '') ? 400 : 500;
+    res.status(statusCode).json({ error: error.message || 'Failed to delete bundle' });
   }
 });
 
