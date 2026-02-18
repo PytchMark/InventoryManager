@@ -250,7 +250,7 @@ function renderTable() {
     const typeBadge = parentId ? '<span class="type-badge variant">Variant</span>' : '<span class="type-badge main">Main</span>';
 
     const cellMap = buildCellMap(it, stockValue, imgSrc, typeBadge);
-    tr.innerHTML = COLUMN_ORDER.map((key) => `<td>${cellMap[key] || ''}</td>`).join('');
+    tr.innerHTML = COLUMN_ORDER.map((key) => `<td class="col-${key}">${cellMap[key] || ''}</td>`).join('');
 
     tbody.appendChild(tr);
   });
@@ -289,7 +289,7 @@ function renderTableHeader() {
   const row = document.getElementById('itemsTableHeaderRow');
   row.innerHTML = COLUMN_ORDER.map((key) => {
     const col = DEFAULT_COLUMNS.find((c) => c.key === key);
-    return `<th>${col ? col.label : key}</th>`;
+    return `<th class="col-${key}">${col ? col.label : key}</th>`;
   }).join('');
 }
 
