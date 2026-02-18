@@ -33,6 +33,15 @@
       .table-meta{font-size:11px;color:#9a988f;}
       .search-input{min-width:220px;padding:8px 12px;border-radius:999px;border:1px solid rgba(12,44,122,.16);background:#fff;font-size:13px;box-shadow:0 10px 26px rgba(12,44,122,.08);outline:none;}
       .search-input::placeholder{color:#9a9a96;}
+      .manage-toolbar{position:sticky;top:6px;z-index:3;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px;border-radius:12px;background:#F8FAFF;border:1px solid #E6EAF6;}
+      .toolbar-select{min-width:170px;padding:8px 10px;border-radius:999px;border:1px solid rgba(12,44,122,.16);background:#fff;font-size:13px;outline:none;}
+      .toggle-wrap{display:inline-flex;gap:6px;align-items:center;font-size:12px;color:#555;}
+      .save-pill{display:inline-flex;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600;}
+      .save-pill.saved{background:rgba(0,128,96,.12);color:#0b6a4b;}
+      .save-pill.saving{background:rgba(230,182,82,.2);color:#7a5a18;}
+      .save-pill.error{background:rgba(203,63,63,.16);color:#9d1d1d;}
+      .clear-btn{padding:7px 12px;border-radius:999px;border:1px solid rgba(12,44,122,.16);background:#fff;font-size:12px;cursor:pointer;}
+
       .table-scroll{border-radius:14px;border:1px solid #ECEEF7;overflow:auto;max-height:420px;}
       table{border-collapse:collapse;width:100%;font-size:12px;background:#fff;}
       thead{position:sticky;top:0;z-index:1;background:#F5F6FC;}
@@ -50,6 +59,19 @@
       .item-name{font-weight:600;color:var(--blue);}
       .img-btn{display:inline-flex;align-items:center;justify-content:center;padding:3px 9px;font-size:11px;border-radius:999px;border:1px solid rgba(12,44,122,.18);background:linear-gradient(#fff,#F4F7FF);cursor:pointer;max-width:max-content;}
       .img-btn:hover{box-shadow:0 6px 16px rgba(12,44,122,.16);transform:translateY(-1px);}
+      .item-meta-inline{display:flex;align-items:center;gap:6px;}
+      .type-badge{display:inline-flex;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:600;}
+      .type-badge.main{background:rgba(12,44,122,.12);color:#0c2c7a;}
+      .type-badge.variant{background:rgba(230,182,82,.2);color:#7a5a18;}
+      .editable-cell{display:flex;flex-direction:column;gap:2px;min-width:120px;}
+      .editable-display{border:1px solid #dfe5f5;background:#fff;border-radius:8px;padding:4px 6px;font-size:12px;text-align:left;cursor:text;}
+      .editable-cell.saving .editable-display{opacity:.7;}
+      .editable-cell.error .editable-display{border-color:#c84040;background:#fff6f6;}
+      .cell-input{border:1px solid #9bb0e9;background:#fff;border-radius:8px;padding:4px 6px;font-size:12px;outline:none;}
+      .cell-state{font-size:10px;color:#9a988f;min-height:12px;}
+      .retry-btn{max-width:max-content;border:none;background:none;color:#9d1d1d;font-size:10px;padding:0;cursor:pointer;text-decoration:underline;}
+      .muted{color:#9a988f;}
+
     </style>
   </head>
   <body>
@@ -80,15 +102,27 @@
         <div class="table-header">
           <div>
             <h3 class="table-title">Inventory Detail <span class="pill-count" id="visibleCount">0 items</span></h3>
-            <div class="table-meta">Search by name or SKU to quickly find an item. Upload or change product images from the table.</div>
+            <div class="table-meta">Search by name or SKU, classify products inline, and manage variants directly from the table.</div>
           </div>
-          <div><input id="searchBox" class="search-input" placeholder="Search by item name or SKU…" /></div>
+        </div>
+
+        <div class="manage-toolbar">
+          <input id="searchBox" class="search-input" placeholder="Search by item name or SKU…" />
+          <select id="categoryFilter" class="toolbar-select">
+            <option value="ALL">All categories</option>
+          </select>
+          <label class="toggle-wrap">
+            <input id="showVariants" type="checkbox" />
+            <span>Show variants</span>
+          </label>
+          <span id="saveStatus" class="save-pill saved">Saved</span>
+          <button id="clearFiltersBtn" class="clear-btn" type="button">Clear filters</button>
         </div>
 
         <div class="table-scroll">
           <table id="itemsTable">
             <thead>
-              <tr><th>Item & Image</th><th>SKU</th><th>On Hand</th><th>Reorder Level</th><th>Stock On Hand</th><th>Selling Price</th><th>Stock Value</th><th>Status</th><th>Unit</th><th>Ref ID</th></tr>
+              <tr><th>Item & Image</th><th>SKU</th><th>On Hand</th><th>Reorder Level</th><th>Stock On Hand</th><th>Selling Price</th><th>Stock Value</th><th>Status</th><th>Unit</th><th>Ref ID</th><th>Category</th><th>ParentID</th></tr>
             </thead>
             <tbody></tbody>
           </table>
