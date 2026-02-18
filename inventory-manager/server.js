@@ -3,7 +3,8 @@ const path = require('path');
 const cors = require('cors');
 const {
   getInventoryData,
-  updateImageUrlBySku
+  updateImageUrlBySku,
+  updateClassificationBySku
 } = require('./sheets');
 
 const app = express();
@@ -59,6 +60,20 @@ app.get('/api/inventory', async (_req, res) => {
   } catch (error) {
     console.error('GET /api/inventory failed:', error);
     res.status(500).json({ error: error.message || 'Failed to load inventory' });
+  }
+});
+
+
+app.post('/api/items/classify', async (req, res) => {
+  const { sku, category, parentId } = req.body || {};
+
+  try {
+    await updateClassificationBySku(sku, category, parentId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('POST /api/items/classify failed:', error);
+    const statusCode = /Missing|not found/i.test(error.message || '') ? 400 : 500;
+    res.status(statusCode).json({ error: error.message || 'Failed to update classification' });
   }
 });
 

@@ -12,7 +12,9 @@ const COL = {
   PURCHASE_PRICE: 7,
   STATUS: 8,
   UNIT: 9,
-  IMAGE_URL: 10
+  IMAGE_URL: 10,
+  CATEGORY: 11,
+  PARENT_ID: 12
 };
 
 const DEFAULT_SHEET_NAME = 'WebsiteItems';
@@ -55,7 +57,7 @@ async function readWebsiteItemsRaw() {
 
   const result = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${sheetName}!A:K`
+    range: `${sheetName}!A1:M`
   });
 
   const rows = result.data.values || [];
@@ -94,6 +96,8 @@ function transformRowsToInventory(rows) {
     const purchasePrice = parseMoney(row[COL.PURCHASE_PRICE]);
     const isLow = reorderLevel > 0 && qtyOnHand <= reorderLevel;
     const imageUrl = row[COL.IMAGE_URL] ? String(row[COL.IMAGE_URL]).trim() : '';
+    const category = row[COL.CATEGORY] ? String(row[COL.CATEGORY]).trim() : '';
+    const parentId = row[COL.PARENT_ID] ? String(row[COL.PARENT_ID]).trim() : '';
 
     totalStockQty += qtyOnHand;
     totalStockValue += qtyOnHand * sellingPrice;
@@ -113,7 +117,9 @@ function transformRowsToInventory(rows) {
       status,
       referenceId: row[COL.REF_ID] || '',
       isLow,
-      imageUrl
+      imageUrl,
+      category,
+      parentId
     });
   });
 
@@ -135,6 +141,23 @@ async function getInventoryData() {
   return transformRowsToInventory(rows);
 }
 
+async function findRowBySku(sheets, spreadsheetId, sheetName, sku) {
+  const readResult = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${sheetName}!F2:F`
+  });
+
+  const skuRows = readResult.data.values || [];
+  const targetSku = String(sku || '').trim();
+  const offset = skuRows.findIndex((entry) => String((entry && entry[0]) || '').trim() === targetSku);
+
+  if (offset < 0) {
+    throw new Error(`SKU not found in sheet: ${sku}`);
+  }
+
+  return { rowNumber: offset + 2, targetSku };
+}
+
 async function updateImageUrlBySku(sku, imageUrl) {
   if (!sku) {
     throw new Error('Missing SKU');
@@ -145,21 +168,7 @@ async function updateImageUrlBySku(sku, imageUrl) {
 
   const sheets = await getSheetsClient();
   const { spreadsheetId, sheetName } = getConfig();
-
-  const readResult = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: `${sheetName}!F2:F`
-  });
-
-  const skuRows = readResult.data.values || [];
-  const targetSku = String(sku).trim();
-  const offset = skuRows.findIndex((entry) => String((entry && entry[0]) || '').trim() === targetSku);
-
-  if (offset < 0) {
-    throw new Error(`SKU not found in sheet: ${sku}`);
-  }
-
-  const rowNumber = offset + 2;
+  const { rowNumber, targetSku } = await findRowBySku(sheets, spreadsheetId, sheetName, sku);
 
   await sheets.spreadsheets.values.update({
     spreadsheetId,
@@ -178,11 +187,37 @@ async function updateImageUrlBySku(sku, imageUrl) {
   };
 }
 
+async function updateClassificationBySku(sku, category, parentId) {
+  if (!sku) {
+    throw new Error('Missing SKU');
+  }
+
+  const sheets = await getSheetsClient();
+  const { spreadsheetId, sheetName } = getConfig();
+  const { rowNumber, targetSku } = await findRowBySku(sheets, spreadsheetId, sheetName, sku);
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${sheetName}!L${rowNumber}:M${rowNumber}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [[String(category || '').trim(), String(parentId || '').trim()]]
+    }
+  });
+
+  return {
+    success: true,
+    sku: targetSku,
+    row: rowNumber
+  };
+}
+
 module.exports = {
   COL,
   getInventoryData,
   parseMoney,
   readWebsiteItemsRaw,
   transformRowsToInventory,
-  updateImageUrlBySku
+  updateImageUrlBySku,
+  updateClassificationBySku
 };
